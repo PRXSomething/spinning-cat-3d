@@ -81,11 +81,18 @@ const eyeMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.6,
 });
 
+const eyeWhiteMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  roughness: 0.5,
+});
+
+// Body
 const body = new THREE.Mesh(new THREE.SphereGeometry(1.28, 32, 32), furMaterial);
 body.scale.set(1.55, 1.1, 1.25);
 body.position.set(0, 0, 0);
 cat.add(body);
 
+// Belly
 const belly = new THREE.Mesh(new THREE.SphereGeometry(0.8, 24, 24), new THREE.MeshStandardMaterial({
   color: 0xf8e0d6,
   roughness: 0.9,
@@ -94,28 +101,41 @@ belly.scale.set(1.2, 1.2, 0.9);
 belly.position.set(0.2, -0.5, 0);
 cat.add(belly);
 
+// Head
 const head = new THREE.Mesh(new THREE.SphereGeometry(0.78, 28, 28), furMaterial);
 head.position.set(1.95, 0.9, 0);
 head.scale.set(1.08, 1.0, 1.0);
 cat.add(head);
 
+// Muzzle
 const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 20), muzzleMaterial);
 muzzle.scale.set(1.7, 1.15, 1.15);
 muzzle.position.set(2.9, 0.55, 0);
 cat.add(muzzle);
 
+// Nose
 const nose = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 12), noseMaterial);
 nose.position.set(3.53, 0.66, 0);
 cat.add(nose);
 
-const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 12), eyeMaterial);
-leftEye.position.set(2.35, 1.02, 0.22);
+// Eyes with whites
+const eyeWhiteLeft = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), eyeWhiteMaterial);
+eyeWhiteLeft.position.set(2.35, 1.02, 0.22);
+cat.add(eyeWhiteLeft);
+
+const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12), eyeMaterial);
+leftEye.position.set(2.37, 1.02, 0.24);
 cat.add(leftEye);
 
+const eyeWhiteRight = eyeWhiteLeft.clone();
+eyeWhiteRight.position.z = -0.22;
+cat.add(eyeWhiteRight);
+
 const rightEye = leftEye.clone();
-rightEye.position.z = -0.22;
+rightEye.position.z = -0.24;
 cat.add(rightEye);
 
+// Ears
 const earGeometry = new THREE.ConeGeometry(0.2, 0.4, 10);
 const leftEar = new THREE.Mesh(earGeometry, darkFurMaterial);
 leftEar.position.set(1.8, 1.75, 0.28);
@@ -127,6 +147,7 @@ rightEar.position.z = -0.28;
 rightEar.rotation.z = 0.2;
 cat.add(rightEar);
 
+// Whiskers
 const whiskerMaterial = new THREE.MeshStandardMaterial({ color: 0xf6f0f0, roughness: 0.7 });
 const whiskerGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.6, 6);
 
@@ -142,6 +163,7 @@ for (let side of [-1, 1]) {
   cat.add(whiskerGroup);
 }
 
+// Paws
 const pawGeometry = new THREE.CapsuleGeometry(0.12, 0.5, 4, 8);
 const pawMaterial = new THREE.MeshStandardMaterial({ color: 0xdd9f6d, roughness: 0.82 });
 
@@ -154,6 +176,7 @@ for (const x of [-0.7, 0.7]) {
   }
 }
 
+// Tail
 const tailCurve = new THREE.CatmullRomCurve3([
   new THREE.Vector3(-1.2, 0.2, 0),
   new THREE.Vector3(-2.1, 0.7, 0.4),
@@ -170,6 +193,7 @@ const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), darkFurMa
 tailTip.position.set(-3.85, 0.55, 0);
 cat.add(tailTip);
 
+// Mask marking
 const mask = new THREE.Mesh(
   new THREE.SphereGeometry(0.24, 12, 12),
   new THREE.MeshStandardMaterial({ color: 0xd78670, roughness: 0.8 })
@@ -182,14 +206,18 @@ catPivot.add(cat);
 scene.add(catPivot);
 
 const mouse = { x: 0, y: 0 };
-const targetRotation = { x: 0, y: 0 };
 const clock = new THREE.Clock();
+let spinVelocity = 0;
+let lastMouseMoveTime = 0;
 
 window.addEventListener('pointermove', (event) => {
   const nx = (event.clientX / window.innerWidth) * 2 - 1;
   const ny = -(event.clientY / window.innerHeight) * 2 + 1;
   mouse.x = nx;
   mouse.y = ny;
+
+  lastMouseMoveTime = performance.now();
+  spinVelocity = 8;
 });
 
 window.addEventListener('resize', () => {
@@ -201,15 +229,23 @@ window.addEventListener('resize', () => {
 
 function animate() {
   const t = clock.getElapsedTime();
+  const timeSinceMoveMs = performance.now() - lastMouseMoveTime;
+
+  if (timeSinceMoveMs > 500) {
+    spinVelocity *= 0.94;
+    if (spinVelocity < 0.02) spinVelocity = 0;
+  }
+
   const driftX = THREE.MathUtils.lerp(catPivot.rotation.x, mouse.y * 0.9, 0.06);
   const driftY = THREE.MathUtils.lerp(catPivot.rotation.y, mouse.x * 1.2, 0.06);
-  catPivot.rotation.x = driftX;
-  catPivot.rotation.y = driftY + t * 0.9;
 
-  cat.rotation.z = Math.sin(t * 2.3) * 0.22;
-  cat.rotation.x = Math.sin(t * 2.0) * 0.16;
-  cat.position.y = Math.sin(t * 2.8) * 0.14;
-  cat.position.x = Math.sin(t * 1.5) * 0.12;
+  catPivot.rotation.x = driftX;
+  catPivot.rotation.y = driftY + (spinVelocity * t * 0.33);
+
+  cat.rotation.z = Math.sin(t * 1.2) * 0.08;
+  cat.rotation.x = Math.sin(t * 0.8) * 0.05;
+  cat.position.y = Math.sin(t * 1.5) * 0.06;
+  cat.position.x = Math.sin(t * 1.1) * 0.05;
 
   camera.position.x = THREE.MathUtils.lerp(camera.position.x, mouse.x * 1.5, 0.03);
   camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.8 + mouse.y * 0.7, 0.03);
